@@ -1,0 +1,26 @@
+# Core
+python-dotenv==1.0.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# DB
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# Scrape
+requests==2.31.0
+scrapy==2.11.0
+playwright==1.40.0
+beautifulsoup4==4.12.2
+
+# NLP
+spacy==3.7.2
+skillNer==1.0.1
+
+# Data processing
+pandas==2.1.4
+python-dateutil==2.8.2
+
+# Utilities
+loguru==0.7.2
+tenacity==8.2.3
