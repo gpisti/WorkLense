@@ -72,6 +72,27 @@ CREATE TABLE skills (
 CREATE INDEX idx_skills_type ON skills(type);
 
 -- ============================================
+-- RAW DATA TABLE
+-- ============================================
+
+CREATE TABLE raw_jobs (
+    id BIGSERIAL PRIMARY KEY,
+    source VARCHAR(50) NOT NULL,
+    external_id VARCHAR(255) NOT NULL,
+    raw_data JSONB NOT NULL,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed BOOLEAN DEFAULT FALSE,
+    processed_at TIMESTAMPTZ,
+    error_message TEXT,
+    
+    UNIQUE(source, external_id)
+);
+
+CREATE INDEX idx_raw_jobs_source ON raw_jobs(source, fetched_at DESC);
+CREATE INDEX idx_raw_jobs_processed ON raw_jobs(processed) WHERE processed = FALSE;
+CREATE INDEX idx_raw_jobs_data_gin ON raw_jobs USING gin(raw_data);
+
+-- ============================================
 -- FACT TABLE - Jobs
 -- ============================================
 
@@ -111,6 +132,7 @@ CREATE TABLE jobs (
     last_seen_at TIMESTAMPTZ DEFAULT NOW(),
     
     content_hash CHAR(64) NOT NULL,
+    raw_job_id BIGINT REFERENCES raw_jobs(id) ON DELETE SET NULL,
     
     UNIQUE(source, external_id),
     CHECK (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)
@@ -124,6 +146,7 @@ CREATE INDEX idx_jobs_content_hash ON jobs(content_hash);
 CREATE INDEX idx_jobs_title_trgm ON jobs USING gin(normalized_title gin_trgm_ops);
 CREATE INDEX idx_jobs_seniority ON jobs(seniority_level) WHERE is_active = TRUE;
 CREATE INDEX idx_jobs_remote ON jobs(is_remote) WHERE is_remote = TRUE;
+CREATE INDEX idx_jobs_raw_job ON jobs(raw_job_id);
 
 -- ============================================
 -- JUNCTION TABLES
