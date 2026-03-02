@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 from rapidfuzz import fuzz, process
 from sentence_transformers import SentenceTransformer
 import numpy as np
+from src.config.settings import settings
 from src.utils.logger import logger
 
 
@@ -15,16 +16,20 @@ class CompanyNormalizer:
         self.use_embeddings = use_embeddings
         self.embedding_model = None
         self.embedding_cache = {}
-        self.llm_url = "http://localhost:11434/api/generate"
-        self.llm_model = "llama3.1:8b"
+        base_url = settings.OLLAMA_URL.rstrip('/')
+        self.llm_url = f"{base_url}/api/generate"
+        self.llm_model = settings.OLLAMA_MODEL
+        self.embedding_model_name = settings.EMBEDDING_MODEL
         self._llm_disabled_reason = None
     
     def normalize(self, name: str) -> str:
         """Normalize company name."""
         if not name:
             return ""
-        
+
         normalized = name.lower().strip()
+        # Unify hyphen-like characters (various Unicode dashes) to space for consistent comparison
+        normalized = re.sub(r'[\u2010-\u2015\u2212\-]+', ' ', normalized)
         suffixes = [
             r'\s+inc\.?$', r'\s+llc\.?$', r'\s+ltd\.?$', r'\s+corp\.?$',
             r'\s+corporation$', r'\s+gmbh$', r'\s+ag$', r'\s+sa$',
@@ -32,7 +37,7 @@ class CompanyNormalizer:
         ]
         for suffix in suffixes:
             normalized = re.sub(suffix, '', normalized, flags=re.IGNORECASE)
-        
+
         return re.sub(r'\s+', ' ', normalized).strip()
     
     def find_similar_company(
@@ -45,31 +50,42 @@ class CompanyNormalizer:
             return None
         
         normalized = self.normalize(name)
-        
+
         # Stage 1: Exact match
-        for company_id, _, norm_name in existing_companies:
+        for company_id, orig_name, norm_name in existing_companies:
             if norm_name == normalized:
                 return company_id
-        
-        # Stage 2: Fuzzy matching
+
+        # Stage 2: One name contains the other -> LLM verification (e.g. "ENOVA" vs "ENOVA Unternehmensgruppe")
+        if self.use_llm and not self._llm_disabled_reason:
+            for company_id, orig_name, norm_name in existing_companies:
+                if norm_name == normalized:
+                    continue
+                if min(len(normalized), len(norm_name)) < 3:
+                    continue
+                if normalized in norm_name or norm_name in normalized:
+                    if self._llm_verify(name, orig_name):
+                        return company_id
+
+        # Stage 3: Fuzzy matching
         fuzzy_match = self._fuzzy_match(normalized, existing_companies)
         if not fuzzy_match:
             return None
-        
+
         score, match_idx = fuzzy_match
         company_id, orig_name, _ = existing_companies[match_idx]
-        
+
         # High confidence - use it
         if score >= 90:
             return company_id
-        
-        # Medium confidence - verify
-        if score >= 75:
+
+        # Medium confidence (65-89) - verify with embedding or LLM
+        if score >= 65:
             if self.use_embeddings and self._embedding_verify(normalized, existing_companies[match_idx][2]):
                 return company_id
             if self.use_llm and self._llm_verify(name, orig_name):
                 return company_id
-        
+
         return None
     
     def _fuzzy_match(
@@ -84,7 +100,7 @@ class CompanyNormalizer:
             normalized,
             norm_names,
             scorer=fuzz.token_sort_ratio,
-            score_cutoff=75
+            score_cutoff=65
         )
         
         if best_match:
@@ -97,7 +113,7 @@ class CompanyNormalizer:
         """Verify match using embeddings."""
         if self.embedding_model is None:
             self.logger.info("Loading embedding model...")
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.embedding_model = SentenceTransformer(self.embedding_model_name)
         
         if normalized not in self.embedding_cache:
             self.embedding_cache[normalized] = self.embedding_model.encode(normalized)
@@ -108,7 +124,7 @@ class CompanyNormalizer:
         emb2 = self.embedding_cache[existing_norm]
         
         similarity = np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
-        return similarity >= 0.85
+        return similarity >= 0.80
     
     def _llm_verify(self, new_name: str, existing_name: str) -> bool:
         """Verify match using LLM."""
@@ -117,12 +133,12 @@ class CompanyNormalizer:
         if self._llm_disabled_reason:
             return False
         try:
-            prompt = f'Are these the same company? "{new_name}" and "{existing_name}". Answer YES or NO.'
+            prompt = f'Are these the same company? "{new_name}" and "{existing_name}". Reply with exactly one word: YES or NO.'
             
             response = requests.post(
                 self.llm_url,
                 json={"model": self.llm_model, "prompt": prompt, "stream": False},
-                timeout=10
+                timeout=25
             )
             
             result = response.json().get("response", "").upper()

@@ -18,4 +18,11 @@ class Settings:
     ADZUNA_API_KEY = os.getenv("ADZUNA_API_KEY")
     ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID")
 
+    # NLP / LLM (Ollama)
+    OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
+
+    # Embeddings (sentence-transformers)
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
 settings = Settings()
