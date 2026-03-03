@@ -21,6 +21,7 @@ class Settings:
     # NLP / LLM (Ollama)
     OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
+    OLLAMA_TECH_MODEL = os.getenv("OLLAMA_TECH_MODEL", "qwen2.5:7b-instruct")
 
     # Embeddings (sentence-transformers)
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")

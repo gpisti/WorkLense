@@ -17,7 +17,7 @@ class AdzunaParser(BaseParser):
         return {
             'external_id': str(data.get('id', '')),
             'title': data.get('title', ''),
-            'description': data.get('description', ''),
+            'description': data.get('full_description') or data.get('description', ''),
             'url': data.get('redirect_url', ''),
             'company_name': data.get('company', {}).get('display_name', ''),
             'city': city,

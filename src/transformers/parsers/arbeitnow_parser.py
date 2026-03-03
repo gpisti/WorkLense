@@ -43,7 +43,7 @@ class ArbeitnowParser(BaseParser):
         return {
             'external_id': raw_job.external_id,
             'title': title,
-            'description': data.get('description', ''),
+            'description': data.get('full_description') or data.get('description', ''),
             'url': data.get('url', ''),
             'company_name': company_name,
             'city': city,

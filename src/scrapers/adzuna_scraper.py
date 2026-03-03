@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from src.utils.logger import logger
 from src.database.models import RawJob, get_session
 from src.config.settings import settings
+from src.utils.fetch_description import fetch_full_description
 
 
 class AdzunaScraper:
@@ -89,6 +90,11 @@ class AdzunaScraper:
                     
                     for job in jobs:
                         try:
+                            url = job.get('redirect_url')
+                            if url:
+                                full = fetch_full_description(url, source="adzuna")
+                                if full:
+                                    job = {**job, 'full_description': full}
                             raw_job = RawJob(
                                 source=f"{self.SOURCE_NAME}_{country}",
                                 external_id=str(job.get('id', '')),
