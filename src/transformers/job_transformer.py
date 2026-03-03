@@ -3,11 +3,12 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from src.utils.logger import logger
 from src.database.models import (
-    get_session, RawJob, Job, Company, Location
+    get_session, RawJob, Job, Company, Location, JobTechnology
 )
 from src.transformers.parsers.arbeitnow_parser import ArbeitnowParser
 from src.transformers.parsers.adzuna_parser import AdzunaParser
 from src.nlp.company_normalizer import CompanyNormalizer
+from src.nlp.technology_extractor import extract_technology_ids
 
 
 CONTINENT_MAP = {
@@ -39,7 +40,8 @@ class JobTransformer:
             self.logger.info(f"Found {len(raw_jobs)} unprocessed jobs")
             
             processed = 0
-            for raw_job in raw_jobs:
+            for i, raw_job in enumerate(raw_jobs, 1):
+                self.logger.info(f"[{i}/{len(raw_jobs)}] raw_job id={raw_job.id} source={raw_job.source}")
                 try:
                     if self._transform_job(session, raw_job):
                         processed += 1
@@ -69,6 +71,7 @@ class JobTransformer:
         content_hash = hashlib.sha256(content.encode()).hexdigest()
 
         if session.query(Job).filter(Job.content_hash == content_hash).first():
+            self.logger.debug("Duplicate (content_hash), skip")
             raw_job.processed = True
             raw_job.processed_at = datetime.now(timezone.utc)
             session.commit()
@@ -146,6 +149,16 @@ class JobTransformer:
         )
 
         session.add(job)
+        session.flush()
+        self.logger.info(f"Job id={job.id} created, extracting technologies...")
+        try:
+            tech_ids = extract_technology_ids(session, parsed['title'], parsed['description'])
+            for tech_id in tech_ids:
+                session.add(JobTechnology(job_id=job.id, technology_id=tech_id))
+            if tech_ids:
+                self.logger.info(f"Job id={job.id}: {len(tech_ids)} technologies linked")
+        except Exception as e:
+            self.logger.warning(f"Technology extraction failed for job id={job.id}: {e}")
         raw_job.processed = True
         raw_job.processed_at = datetime.now(timezone.utc)
         session.commit()
