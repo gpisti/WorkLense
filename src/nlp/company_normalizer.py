@@ -1,6 +1,5 @@
 import re
 import requests
-from typing import Optional, Tuple
 from rapidfuzz import fuzz, process
 from sentence_transformers import SentenceTransformer
 import numpy as np
@@ -41,10 +40,10 @@ class CompanyNormalizer:
         return re.sub(r'\s+', ' ', normalized).strip()
     
     def find_similar_company(
-        self, 
-        name: str, 
-        existing_companies: list[Tuple[int, str, str]]
-    ) -> Optional[int]:
+        self,
+        name: str,
+        existing_companies: list[tuple[int, str, str]]
+    ) -> int | None:
         """Find similar company using tiered matching."""
         if not name or not existing_companies:
             return None
@@ -59,8 +58,6 @@ class CompanyNormalizer:
         # Stage 2: One name contains the other -> LLM verification (e.g. "ENOVA" vs "ENOVA Unternehmensgruppe")
         if self.use_llm and not self._llm_disabled_reason:
             for company_id, orig_name, norm_name in existing_companies:
-                if norm_name == normalized:
-                    continue
                 if min(len(normalized), len(norm_name)) < 3:
                     continue
                 if normalized in norm_name or norm_name in normalized:
@@ -91,8 +88,8 @@ class CompanyNormalizer:
     def _fuzzy_match(
         self,
         normalized: str,
-        existing_companies: list[Tuple[int, str, str]]
-    ) -> Optional[Tuple[float, int]]:
+        existing_companies: list[tuple[int, str, str]]
+    ) -> tuple[float, int] | None:
         """Fuzzy string matching."""
         norm_names = [norm for _, _, norm in existing_companies]
         

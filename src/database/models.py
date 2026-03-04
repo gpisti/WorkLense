@@ -99,7 +99,6 @@ class Skill(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)
     type = Column(String(20), nullable=False)  # 'hard' or 'soft'
-    category = Column(String(50))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -163,8 +162,9 @@ class Job(Base):
     experience_years_max = Column(Integer)
     education_required = Column(String(50))
     
-    # Extracted features
-    benefits = Column(JSON)
+    # Extracted features. Must be JSONB (not PG ARRAY). If existing column is array, run:
+    # ALTER TABLE jobs ALTER COLUMN benefits TYPE JSONB USING to_jsonb(benefits);
+    benefits = Column(JSONB)
     
     # Metadata
     posted_at = Column(DateTime(timezone=True), nullable=False)

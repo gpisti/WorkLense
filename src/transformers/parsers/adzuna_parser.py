@@ -1,9 +1,9 @@
-from src.transformers.parsers.base_parser import BaseParser
+from src.utils.date_utils import parse_date
 from src.database.models import RawJob
 
 
-class AdzunaParser(BaseParser):
-    
+class AdzunaParser:
+
     @staticmethod
     def parse(data: dict, raw_job: RawJob) -> dict:
         location = data.get('location', {})
@@ -31,5 +31,5 @@ class AdzunaParser(BaseParser):
             'salary_period': 'yearly',
             'employment_type': data.get('contract_type', 'full_time'),
             'seniority_level': None,
-            'posted_at': AdzunaParser.parse_date(data.get('created'))
+            'posted_at': parse_date(data.get('created'))
         }

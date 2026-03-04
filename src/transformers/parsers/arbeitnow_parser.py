@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
-from src.transformers.parsers.base_parser import BaseParser
+from src.utils.date_utils import parse_date
 from src.database.models import RawJob
 
 
-class ArbeitnowParser(BaseParser):
+class ArbeitnowParser:
     
     @staticmethod
     def parse(data: dict, raw_job: RawJob) -> dict:
@@ -38,7 +38,7 @@ class ArbeitnowParser(BaseParser):
         if isinstance(created_at, (int, float)):
             posted_at = datetime.fromtimestamp(created_at, tz=timezone.utc)
         else:
-            posted_at = ArbeitnowParser.parse_date(created_at)
+            posted_at = parse_date(created_at)
 
         return {
             'external_id': raw_job.external_id,

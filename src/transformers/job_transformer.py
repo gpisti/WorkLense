@@ -1,14 +1,17 @@
 import hashlib
+import json
 from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from src.utils.logger import logger
 from src.database.models import (
-    get_session, RawJob, Job, Company, Location, JobTechnology
+    get_session, RawJob, Job, Company, Location, JobTechnology, JobSkill
 )
 from src.transformers.parsers.arbeitnow_parser import ArbeitnowParser
 from src.transformers.parsers.adzuna_parser import AdzunaParser
 from src.nlp.company_normalizer import CompanyNormalizer
-from src.nlp.technology_extractor import extract_technology_ids
+from src.nlp.job_extractor import extract_job_structured
+from src.nlp.technology_extractor import resolve_technology_pairs_to_ids
+from src.nlp.skill_resolver import resolve_skill_pairs_to_ids
 
 
 CONTINENT_MAP = {
@@ -19,6 +22,89 @@ CONTINENT_MAP = {
     'br': 'South America',
     'za': 'Africa'
 }
+
+
+def _to_db_null(val):
+    """Return None for string 'null'/'none'/empty so DB gets real NULL; leave other values unchanged."""
+    if val is None:
+        return None
+    if isinstance(val, str):
+        s = val.strip().lower()
+        if s in ('null', 'none', ''):
+            return None
+    return val
+
+
+def _normalize_benefits(raw) -> list | None:
+    """Parse and sanitize benefits from LLM/parser. Returns list of non-empty strings or None."""
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        s = raw.strip().lower()
+        if s in ('null', 'none', ''):
+            return None
+        try:
+            raw = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    if not isinstance(raw, list):
+        return None
+    sanitized = [str(x).strip() for x in raw if x is not None and str(x).strip()]
+    return sanitized if sanitized else None
+
+
+def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
+    """Merge LLM-extracted fields with parser fallback. One place for all merge rules. String 'null'/'none' -> None for DB."""
+    def n(v):
+        return _to_db_null(v)
+
+    if not extracted:
+        cc = n(parsed.get('country'))
+        return {
+            'company_name': n(parsed.get('company_name')),
+            'city': n(parsed.get('city')),
+            'country_code': cc,
+            'country_name': n(parsed.get('country_name')) or (cc.upper() if cc else None),
+            'is_remote': False if n(parsed.get('is_remote')) is None else bool(parsed.get('is_remote')),
+            'is_hybrid': False if n(parsed.get('is_hybrid')) is None else bool(parsed.get('is_hybrid')),
+            'salary_min': n(parsed.get('salary_min')),
+            'salary_max': n(parsed.get('salary_max')),
+            'salary_currency': n(parsed.get('salary_currency')),
+            'salary_period': n(parsed.get('salary_period')),
+            'employment_type': n(parsed.get('employment_type')),
+            'seniority_level': n(parsed.get('seniority_level')),
+            'experience_years_min': None,
+            'experience_years_max': None,
+            'education_required': None,
+            'raw_benefits': None,
+            'tech_list': [],
+            'skill_list': [],
+        }
+    cc = n(extracted.get('country')) or n(parsed.get('country'))
+    raw_tech = extracted.get('technologies') or []
+    raw_skill = extracted.get('skills') or []
+    tech_list = [{k: n(v) for k, v in t.items()} for t in raw_tech if isinstance(t, dict)]
+    skill_list = [{k: n(v) for k, v in s.items()} for s in raw_skill if isinstance(s, dict)]
+    return {
+        'company_name': n(extracted.get('company_name')) or n(parsed.get('company_name')),
+        'city': n(extracted.get('city')) if extracted.get('city') is not None else n(parsed.get('city')),
+        'country_code': cc,
+        'country_name': n(extracted.get('country_name')) or n(parsed.get('country_name')) or (cc.upper() if cc else None),
+        'is_remote': (lambda v: False if n(v) is None else bool(v))(extracted.get('is_remote') if extracted.get('is_remote') is not None else parsed.get('is_remote', False)),
+        'is_hybrid': (lambda v: False if n(v) is None else bool(v))(extracted.get('is_hybrid') if extracted.get('is_hybrid') is not None else parsed.get('is_hybrid', False)),
+        'salary_min': n(extracted['salary_min']) if 'salary_min' in extracted else n(parsed.get('salary_min')),
+        'salary_max': n(extracted['salary_max']) if 'salary_max' in extracted else n(parsed.get('salary_max')),
+        'salary_currency': n(extracted.get('salary_currency')) or n(parsed.get('salary_currency')),
+        'salary_period': n(extracted.get('salary_period')) or n(parsed.get('salary_period')),
+        'employment_type': n(extracted.get('employment_type')) or n(parsed.get('employment_type')),
+        'seniority_level': n(extracted.get('seniority_level')) or n(parsed.get('seniority_level')),
+        'experience_years_min': n(extracted.get('experience_years_min')),
+        'experience_years_max': n(extracted.get('experience_years_max')),
+        'education_required': n(extracted.get('education_required')),
+        'raw_benefits': extracted.get('benefits'),
+        'tech_list': tech_list,
+        'skill_list': skill_list,
+    }
 
 
 class JobTransformer:
@@ -41,15 +127,19 @@ class JobTransformer:
             
             processed = 0
             for i, raw_job in enumerate(raw_jobs, 1):
-                self.logger.info(f"[{i}/{len(raw_jobs)}] raw_job id={raw_job.id} source={raw_job.source}")
+                raw_job_id = raw_job.id
+                self.logger.info(f"[{i}/{len(raw_jobs)}] raw_job id={raw_job_id} source={raw_job.source}")
                 try:
                     if self._transform_job(session, raw_job):
                         processed += 1
                 except Exception as e:
-                    self.logger.error(f"Error processing raw_job {raw_job.id}: {e}")
-                    raw_job.error_message = str(e)
-                    raw_job.processed = True
-                    session.commit()
+                    session.rollback()
+                    self.logger.error(f"Error processing raw_job {raw_job_id}: {e}")
+                    rj = session.get(RawJob, raw_job_id)
+                    if rj:
+                        rj.error_message = str(e)
+                        rj.processed = True
+                        session.commit()
             
             self.logger.info(f"Processed {processed}/{len(raw_jobs)} jobs")
             return processed
@@ -77,31 +167,40 @@ class JobTransformer:
             session.commit()
             return False
 
+        extracted = extract_job_structured(parsed['title'], parsed['description'])
+        merged = _merge_extracted_parsed(extracted, parsed)
+        benefits_for_job = _normalize_benefits(merged['raw_benefits'])
+
+        country_code = merged['country_code']
+        if country_code is not None and isinstance(country_code, str):
+            s = country_code.strip().lower()
+            if s in ('null', 'none', '') or len(s) != 2:
+                country_code = None
+            else:
+                country_code = s[:2]
+
         company_id = None
-        company_name = parsed.get('company_name')
-        if company_name:
+        if merged['company_name']:
             if self._company_cache is None:
                 companies = session.query(Company).all()
                 self._company_cache = [(c.id, c.name, c.normalized_name) for c in companies]
                 self.logger.debug(f"Loaded {len(self._company_cache)} companies into cache")
 
-            similar_id = self.company_normalizer.find_similar_company(company_name, self._company_cache)
+            similar_id = self.company_normalizer.find_similar_company(merged['company_name'], self._company_cache)
             if similar_id:
                 company_id = similar_id
             else:
-                normalized = self.company_normalizer.normalize(company_name)
-                company = Company(name=company_name, normalized_name=normalized)
+                normalized = self.company_normalizer.normalize(merged['company_name'])
+                company = Company(name=merged['company_name'], normalized_name=normalized)
                 session.add(company)
                 session.flush()
-                self._company_cache.append((company.id, company_name, normalized))
+                self._company_cache.append((company.id, merged['company_name'], normalized))
                 company_id = company.id
 
         location_id = None
-        country_code = parsed.get('country')
         if country_code:
-            city = parsed.get('city')
             location = session.query(Location).filter(
-                Location.city == city,
+                Location.city == merged['city'],
                 Location.country == country_code
             ).first()
 
@@ -110,9 +209,9 @@ class JobTransformer:
             else:
                 try:
                     location = Location(
-                        city=city,
+                        city=merged['city'],
                         country=country_code,
-                        country_name=parsed.get('country_name') or country_code.upper(),
+                        country_name=merged['country_name'] or country_code.upper(),
                         continent=CONTINENT_MAP.get(country_code, 'Unknown')
                     )
                     session.add(location)
@@ -121,7 +220,7 @@ class JobTransformer:
                 except IntegrityError:
                     session.rollback()
                     location = session.query(Location).filter(
-                        Location.city == city,
+                        Location.city == merged['city'],
                         Location.country == country_code
                     ).first()
                     location_id = location.id if location else None
@@ -136,29 +235,44 @@ class JobTransformer:
             company_id=company_id,
             location_id=location_id,
             raw_job_id=raw_job.id,
-            is_remote=parsed.get('is_remote', False),
-            is_hybrid=parsed.get('is_hybrid', False),
-            salary_min=parsed.get('salary_min'),
-            salary_max=parsed.get('salary_max'),
-            salary_currency=parsed.get('salary_currency'),
-            salary_period=parsed.get('salary_period'),
-            employment_type=parsed.get('employment_type'),
-            seniority_level=parsed.get('seniority_level'),
+            is_remote=merged['is_remote'],
+            is_hybrid=merged['is_hybrid'],
+            salary_min=merged['salary_min'],
+            salary_max=merged['salary_max'],
+            salary_currency=merged['salary_currency'],
+            salary_period=merged['salary_period'],
+            employment_type=merged['employment_type'],
+            seniority_level=merged['seniority_level'],
+            experience_years_min=merged['experience_years_min'],
+            experience_years_max=merged['experience_years_max'],
+            education_required=(merged['education_required'][:50] if merged['education_required'] else None),
+            benefits=benefits_for_job,
             posted_at=parsed['posted_at'],
             content_hash=content_hash
         )
 
         session.add(job)
         session.flush()
-        self.logger.info(f"Job id={job.id} created, extracting technologies...")
+
         try:
-            tech_ids = extract_technology_ids(session, parsed['title'], parsed['description'])
+            tech_pairs = [(t.get('category') or 'other', t.get('name')) for t in merged['tech_list'] if isinstance(t, dict) and t.get('name')]
+            tech_ids = resolve_technology_pairs_to_ids(session, tech_pairs) if tech_pairs else []
             for tech_id in tech_ids:
                 session.add(JobTechnology(job_id=job.id, technology_id=tech_id))
             if tech_ids:
                 self.logger.info(f"Job id={job.id}: {len(tech_ids)} technologies linked")
+
+            skill_pairs = [(s.get('name'), s.get('type')) for s in merged['skill_list'] if isinstance(s, dict) and s.get('name')]
+            skill_ids = resolve_skill_pairs_to_ids(session, skill_pairs) if skill_pairs else []
+            for skill_id in skill_ids:
+                session.add(JobSkill(job_id=job.id, skill_id=skill_id))
+            if skill_ids:
+                self.logger.info(f"Job id={job.id}: {len(skill_ids)} skills linked")
         except Exception as e:
-            self.logger.warning(f"Technology extraction failed for job id={job.id}: {e}")
+            self.logger.warning(f"Tech/skill resolution failed for job id={job.id}: {e}")
+            session.rollback()
+            raise
+
         raw_job.processed = True
         raw_job.processed_at = datetime.now(timezone.utc)
         session.commit()
