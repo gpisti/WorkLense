@@ -8,6 +8,7 @@ from src.database.models import (
 )
 from src.transformers.parsers.arbeitnow_parser import ArbeitnowParser
 from src.transformers.parsers.adzuna_parser import AdzunaParser
+from src.transformers.parsers.findwork_parser import FindworkParser
 from src.nlp.company_normalizer import CompanyNormalizer
 from src.nlp.job_extractor import extract_job_structured
 from src.nlp.technology_extractor import resolve_technology_pairs_to_ids
@@ -189,6 +190,8 @@ class JobTransformer:
             parsed = ArbeitnowParser.parse(raw_job.raw_data, raw_job)
         elif raw_job.source.startswith('adzuna_'):
             parsed = AdzunaParser.parse(raw_job.raw_data, raw_job)
+        elif raw_job.source == 'findwork':
+            parsed = FindworkParser.parse(raw_job.raw_data, raw_job)
         else:
             self.logger.warning(f"Unknown source: {raw_job.source}")
             return False
