@@ -11,7 +11,6 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
     AIRFLOW__WEBSERVER__SECRET_KEY: worklense-airflow-secret
-    # Pass project env vars so DAGs / BashOperator inherit them
     ADZUNA_API_KEY: ${ADZUNA_API_KEY:-}
     ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
     FINDWORK_API_KEY: ${FINDWORK_API_KEY:-}

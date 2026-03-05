@@ -1,7 +1,5 @@
 -- ============================================
--- WorkLense Database Schema v1.0
--- Purpose: Store global IT job market data
--- Designed for: Analytics + Search
+-- WorkLense Database Schema
 -- ============================================
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -234,7 +232,6 @@ ON CONFLICT (name) DO NOTHING;
 -- FUNCTIONS & TRIGGERS
 -- ============================================
 
--- Update timestamp automatically
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -249,10 +246,9 @@ CREATE TRIGGER companies_updated_at
     EXECUTE FUNCTION update_updated_at();
 
 -- ============================================
--- VIEWS FOR COMMON QUERIES
+-- VIEWS
 -- ============================================
 
--- Active jobs with full details
 CREATE VIEW v_active_jobs AS
 SELECT 
     j.id,
@@ -274,7 +270,6 @@ LEFT JOIN companies c ON j.company_id = c.id
 LEFT JOIN locations l ON j.location_id = l.id
 WHERE j.is_active = TRUE;
 
--- Job counts by technology
 CREATE VIEW v_tech_demand AS
 SELECT 
     t.name as technology,

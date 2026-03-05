@@ -1,4 +1,3 @@
-"""Single LLM call to extract structured job data from full ad text. Returns one JSON blob."""
 import json
 import time
 import requests
@@ -48,7 +47,6 @@ Job ad:
 
 
 def _one_extraction_attempt(prompt: str) -> dict | None:
-    """Single LLM request and JSON parse. Returns dict or None."""
     try:
         r = requests.post(
             f"{settings.OLLAMA_URL.rstrip('/')}/api/generate",
@@ -82,7 +80,6 @@ def _one_extraction_attempt(prompt: str) -> dict | None:
 
 
 def extract_job_structured(title: str, description: str) -> dict | None:
-    """Send full job text to LLM; return parsed JSON dict or None on failure. Retries on request or JSON parse failure."""
     text = (title or "") + "\n\n" + (description or "")
     text = text.strip()[: _MAX_TEXT_CHARS]
     if not text:

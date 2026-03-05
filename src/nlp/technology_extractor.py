@@ -1,11 +1,9 @@
-"""Resolve (category, name) technology pairs to technology IDs; fuzzy match and insert new."""
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from rapidfuzz import fuzz, process
 
 from src.database.models import Technology, SessionLocal
 
-# Canonical categories for technologies (LLM output is normalized to these)
 _CATEGORIES = frozenset({"language", "framework", "database", "tool", "other"})
 _CATEGORY_ALIASES = {
     "programming language": "language", "languages": "language", "lang": "language",
@@ -19,7 +17,6 @@ _FUZZY_SCORE_CUTOFF = 88
 
 
 def resolve_technology_pairs_to_ids(session: Session, pairs: list[tuple[str, str]]) -> list[int]:
-    """Map (category, name) pairs to technology IDs; fuzzy match and insert new. Returns deduplicated list of ids."""
     techs = session.query(Technology).all()
     name_to_id = {}
     for t in techs:

@@ -1,7 +1,3 @@
-"""
-WorkLense – IT Job Market Analytics Dashboard
-Run: streamlit run streamlit_app.py
-"""
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -49,7 +45,6 @@ def _apply(fig: go.Figure, *, height: int | None = None, **kw) -> go.Figure:
 
 
 def _section(title: str, description: str):
-    """Render a section header with a short description underneath."""
     st.markdown(
         f'<h2 style="margin-bottom:0;padding-top:2.2rem">{title}</h2>'
         f'<p style="color:#94a3b8;margin-top:0.2rem;margin-bottom:1rem;font-size:0.92rem">'

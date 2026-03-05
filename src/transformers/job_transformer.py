@@ -26,7 +26,6 @@ CONTINENT_MAP = {
 
 
 def _to_db_null(val):
-    """Return None for string 'null'/'none'/empty so DB gets real NULL; leave other values unchanged."""
     if val is None:
         return None
     if isinstance(val, str):
@@ -37,7 +36,6 @@ def _to_db_null(val):
 
 
 def _normalize_benefits(raw) -> list | None:
-    """Parse and sanitize benefits from LLM/parser. Returns list of non-empty strings or None."""
     if raw is None:
         return None
     if isinstance(raw, str):
@@ -75,7 +73,6 @@ for _pat, _val in [
 
 
 def _normalize_education(raw) -> str | None:
-    """Map free-text or enum education value to one of the canonical levels, or None."""
     if raw is None:
         return None
     if not isinstance(raw, str):
@@ -95,7 +92,6 @@ def _normalize_education(raw) -> str | None:
 
 
 def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
-    """Merge LLM-extracted fields with parser fallback. One place for all merge rules. String 'null'/'none' -> None for DB."""
     def n(v):
         return _to_db_null(v)
 

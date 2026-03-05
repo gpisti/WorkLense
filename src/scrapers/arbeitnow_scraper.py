@@ -16,7 +16,6 @@ class ArbeitnowScraper:
     
     
     def run(self) -> int:
-        """Fetch all pages and save to database."""
         self.logger.info(f"Starting {self.SOURCE_NAME} scraper...")
         
         saved = 0

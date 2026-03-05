@@ -1,4 +1,3 @@
-"""Resolve (name, type) skill pairs to skill IDs; fuzzy match and insert new."""
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from rapidfuzz import fuzz, process
@@ -17,7 +16,6 @@ def _normalize_type(t: str) -> str:
 
 
 def resolve_skill_pairs_to_ids(session: Session, pairs: list[tuple[str, str]]) -> list[int]:
-    """Map (name, type) pairs to skill IDs; fuzzy match and insert new. Returns deduplicated list of ids."""
     skills = session.query(Skill).all()
     name_to_id = {s.name.lower(): s.id for s in skills}
     existing_names = list(name_to_id.keys())

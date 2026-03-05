@@ -27,7 +27,6 @@ class AdzunaScraper:
             raise ValueError("ADZUNA_APP_ID and ADZUNA_API_KEY must be set in settings")
     
     def run(self) -> int:
-        """Fetch all countries in parallel (8 at a time) and save to database."""
         self.logger.info(f"Starting {self.SOURCE_NAME} scraper for {len(self.COUNTRIES)} countries (8 parallel)...")
         
         total_saved = 0
@@ -48,7 +47,6 @@ class AdzunaScraper:
         return total_saved
     
     def _fetch_country(self, country: str) -> int:
-        """Fetch all pages for a single country."""
         saved = 0
         page = 1
         

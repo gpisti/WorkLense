@@ -22,7 +22,6 @@ class CompanyNormalizer:
         self._llm_disabled_reason = None
     
     def normalize(self, name: str) -> str:
-        """Normalize company name."""
         if not name:
             return ""
 
@@ -44,18 +43,17 @@ class CompanyNormalizer:
         name: str,
         existing_companies: list[tuple[int, str, str]]
     ) -> int | None:
-        """Find similar company using tiered matching."""
         if not name or not existing_companies:
             return None
         
         normalized = self.normalize(name)
 
-        # Stage 1: Exact match
+        # 1. Exact match
         for company_id, orig_name, norm_name in existing_companies:
             if norm_name == normalized:
                 return company_id
 
-        # Stage 2: One name contains the other -> LLM verification (e.g. "ENOVA" vs "ENOVA Unternehmensgruppe")
+        # 2. Substring match -> LLM verification
         if self.use_llm and not self._llm_disabled_reason:
             for company_id, orig_name, norm_name in existing_companies:
                 if min(len(normalized), len(norm_name)) < 3:
@@ -64,7 +62,7 @@ class CompanyNormalizer:
                     if self._llm_verify(name, orig_name):
                         return company_id
 
-        # Stage 3: Fuzzy matching
+        # 3. Fuzzy matching
         fuzzy_match = self._fuzzy_match(normalized, existing_companies)
         if not fuzzy_match:
             return None
@@ -72,11 +70,10 @@ class CompanyNormalizer:
         score, match_idx = fuzzy_match
         company_id, orig_name, _ = existing_companies[match_idx]
 
-        # High confidence - use it
         if score >= 90:
             return company_id
 
-        # Medium confidence (65-89) - verify with embedding or LLM
+        # 65-89: verify with embedding or LLM
         if score >= 65:
             if self.use_embeddings and self._embedding_verify(normalized, existing_companies[match_idx][2]):
                 return company_id
@@ -90,7 +87,6 @@ class CompanyNormalizer:
         normalized: str,
         existing_companies: list[tuple[int, str, str]]
     ) -> tuple[float, int] | None:
-        """Fuzzy string matching."""
         norm_names = [norm for _, _, norm in existing_companies]
         
         best_match = process.extractOne(
@@ -107,7 +103,6 @@ class CompanyNormalizer:
         return None
     
     def _embedding_verify(self, normalized: str, existing_norm: str) -> bool:
-        """Verify match using embeddings."""
         if self.embedding_model is None:
             self.logger.info("Loading embedding model...")
             self.embedding_model = SentenceTransformer(self.embedding_model_name)
@@ -124,7 +119,6 @@ class CompanyNormalizer:
         return similarity >= 0.80
     
     def _llm_verify(self, new_name: str, existing_name: str) -> bool:
-        """Verify match using LLM."""
         if not self.use_llm:
             return False
         if self._llm_disabled_reason:

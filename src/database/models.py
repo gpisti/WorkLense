@@ -26,18 +26,15 @@ def get_session() -> Session:
     try:
         yield session
         session.commit()
-        logger.debug("Database session committed")
     except Exception as e:
         session.rollback()
         logger.error(f"Database session error: {e}")
         raise
     finally:
         session.close()
-        logger.debug("Database session closed")
 
 
 class Company(Base):
-    """Company dimension table."""
     __tablename__ = 'companies'
     
     id = Column(Integer, primary_key=True)
@@ -51,12 +48,10 @@ class Company(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
-    # Relationships
     jobs = relationship("Job", back_populates="company")
 
 
 class Location(Base):
-    """Location dimension table."""
     __tablename__ = 'locations'
     
     id = Column(Integer, primary_key=True)
@@ -70,7 +65,6 @@ class Location(Base):
     timezone = Column(String(50))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     jobs = relationship("Job", back_populates="location")
     
     __table_args__ = (
@@ -79,7 +73,6 @@ class Location(Base):
 
 
 class Technology(Base):
-    """Technology dimension table."""
     __tablename__ = 'technologies'
     
     id = Column(Integer, primary_key=True)
@@ -88,25 +81,21 @@ class Technology(Base):
     aliases = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     jobs = relationship("JobTechnology", back_populates="technology")
 
 
 class Skill(Base):
-    """Skill dimension table."""
     __tablename__ = 'skills'
     
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)
-    type = Column(String(20), nullable=False)  # 'hard' or 'soft'
+    type = Column(String(20), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     jobs = relationship("JobSkill", back_populates="skill")
 
 
 class RawJob(Base):
-    """Raw job data staging table."""
     __tablename__ = 'raw_jobs'
     
     id = Column(BigInteger, primary_key=True)
@@ -118,7 +107,6 @@ class RawJob(Base):
     processed_at = Column(DateTime(timezone=True))
     error_message = Column(Text)
     
-    # Relationships
     jobs = relationship("Job", back_populates="raw_job")
     
     __table_args__ = (
@@ -127,56 +115,45 @@ class RawJob(Base):
 
 
 class Job(Base):
-    """Job fact table."""
     __tablename__ = 'jobs'
     
     id = Column(BigInteger, primary_key=True)
     external_id = Column(String(255), nullable=False)
     source = Column(String(50), nullable=False)
     
-    # Basic info
     title = Column(String(500), nullable=False)
     normalized_title = Column(String(200))
     description = Column(Text, nullable=False)
     url = Column(String(1000), nullable=False)
     
-    # Foreign keys
     company_id = Column(Integer, ForeignKey('companies.id', ondelete='SET NULL'))
     location_id = Column(Integer, ForeignKey('locations.id', ondelete='SET NULL'))
     raw_job_id = Column(BigInteger, ForeignKey('raw_jobs.id', ondelete='SET NULL'))
     
-    # Work arrangement
     is_remote = Column(Boolean, default=False)
     is_hybrid = Column(Boolean, default=False)
     
-    # Compensation
     salary_min = Column(Numeric(12, 2))
     salary_max = Column(Numeric(12, 2))
     salary_currency = Column(String(3))
     salary_period = Column(String(20))
     
-    # Job details
     employment_type = Column(String(20))
     seniority_level = Column(String(20))
     experience_years_min = Column(Integer)
     experience_years_max = Column(Integer)
     education_required = Column(String(50))
     
-    # Extracted features. Must be JSONB (not PG ARRAY). If existing column is array, run:
-    # ALTER TABLE jobs ALTER COLUMN benefits TYPE JSONB USING to_jsonb(benefits);
     benefits = Column(JSONB)
     
-    # Metadata
     posted_at = Column(DateTime(timezone=True), nullable=False)
     scraped_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True))
     is_active = Column(Boolean, default=True)
     last_seen_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Deduplication
     content_hash = Column(String(64), nullable=False)
     
-    # Relationships
     company = relationship("Company", back_populates="jobs")
     location = relationship("Location", back_populates="jobs")
     raw_job = relationship("RawJob", back_populates="jobs")
@@ -190,7 +167,6 @@ class Job(Base):
 
 
 class JobTechnology(Base):
-    """Junction table: Jobs <-> Technologies."""
     __tablename__ = 'job_technologies'
     
     job_id = Column(BigInteger, ForeignKey('jobs.id', ondelete='CASCADE'), primary_key=True)
@@ -198,13 +174,11 @@ class JobTechnology(Base):
     is_required = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     job = relationship("Job", back_populates="technologies")
     technology = relationship("Technology", back_populates="jobs")
 
 
 class JobSkill(Base):
-    """Junction table: Jobs <-> Skills."""
     __tablename__ = 'job_skills'
     
     job_id = Column(BigInteger, ForeignKey('jobs.id', ondelete='CASCADE'), primary_key=True)
@@ -212,6 +186,5 @@ class JobSkill(Base):
     is_required = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     job = relationship("Job", back_populates="skills")
     skill = relationship("Skill", back_populates="jobs")

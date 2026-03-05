@@ -8,7 +8,6 @@ from src.config.settings import settings
 
 class FindworkScraper:
 
-    # IT-releváns keresőszavak – ezekkel fedjük le a teljes spektrumot
     IT_KEYWORDS = [
         # General
         'software', 'backend', 'frontend', 'fullstack', 'devops', 'programmer', 'developer', 'engineer', 'architect', 'cto', 'lead developer', 'principal engineer',
@@ -55,7 +54,7 @@ class FindworkScraper:
         self.logger = logger
         self.API_URL = "https://findwork.dev/api/jobs/"
         self.SOURCE_NAME = "findwork"
-        self.request_interval = 1.1  # 60 req/perc -> ~1.1s biztonságosan
+        self.request_interval = 1.1
         self.last_request = 0
         self.api_key = settings.FINDWORK_API_KEY
 
@@ -63,7 +62,6 @@ class FindworkScraper:
             raise ValueError("FINDWORK_API_KEY must be set in settings")
 
     def run(self) -> int:
-        """Fetch all IT keywords sequentially and save to database."""
         self.logger.info(f"Starting {self.SOURCE_NAME} scraper for {len(self.IT_KEYWORDS)} keyword groups...")
 
         total_saved = 0
@@ -80,9 +78,8 @@ class FindworkScraper:
         return total_saved
 
     def _fetch_keyword(self, keyword: str) -> int:
-        """Fetch all pages for a single keyword."""
         saved = 0
-        url = self.API_URL  # Az API a 'next' mezőben adja vissza a következő oldalt
+        url = self.API_URL
 
         with get_session() as session:
             while url:
@@ -127,7 +124,6 @@ class FindworkScraper:
 
                     self.logger.info(f"Keyword '{keyword}' – {len(jobs)} jobs fetched, {saved} saved so far")
 
-                    # A FindWork API a 'next' mezőben adja a teljes következő URL-t
                     url = data.get('next')
 
                 except Exception as e:
