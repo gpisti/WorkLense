@@ -17,6 +17,7 @@ class Settings:
     # Scrapers
     ADZUNA_API_KEY = os.getenv("ADZUNA_API_KEY")
     ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID")
+    FINDWORK_API_KEY: str = os.getenv("FINDWORK_API_KEY", "")
 
     # NLP / LLM (Ollama)
     OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
