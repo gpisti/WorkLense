@@ -21,7 +21,7 @@ _EXTRACTION_PROMPT = """Extract structured data from this job ad. Return only a 
   "skills": [ {"name": "string", "type": "hard|soft"} ],
   "experience_years_min": number or null,
   "experience_years_max": number or null,
-  "education_required": "string or null",
+  "education_required": "one of: phd, masters, bachelors, associate, high_school, none_required, or null",
   "benefits": [ "string" ],
   "employment_type": "string or null",
   "seniority_level": "string or null",
@@ -37,6 +37,7 @@ Rules:
 - Extract only what is explicitly stated or clearly implied. Use null when not found.
 - Technologies: only concrete named products (Python, React, PostgreSQL, Docker). Exclude generic terms (analytics, security, Excel as category, BI-Tools).
 - Skills: soft = communication, teamwork, problem-solving; hard = domain/tool skills that are not technologies. Short names only.
+- education_required: use exactly one of the listed values. PhD/doctorate = phd, Master's/MSc/MBA = masters, Bachelor's/BSc/BA/degree = bachelors, Associate/vocational = associate, High school/secondary = high_school, Not required/not mentioned = none_required, Unknown = null.
 - employment_type: e.g. full_time, part_time, working_student. seniority_level: e.g. junior, senior, lead.
 - benefits: list concrete perks (health insurance, home office, training).
 - salary numbers as numbers; currency as EUR, GBP, USD etc.

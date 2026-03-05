@@ -53,6 +53,46 @@ def _normalize_benefits(raw) -> list | None:
     return sanitized if sanitized else None
 
 
+_EDUCATION_VALID = {"phd", "masters", "bachelors", "associate", "high_school", "none_required"}
+
+_EDUCATION_ALIASES: dict[str, str] = {}
+for _pat, _val in [
+    ("phd", "phd"), ("ph.d", "phd"), ("doktor", "phd"), ("doctorate", "phd"),
+    ("master", "masters"), ("msc", "masters"), ("m.sc", "masters"), ("mba", "masters"),
+    ("diplom", "masters"), ("postgrad", "masters"),
+    ("bachelor", "bachelors"), ("bsc", "bachelors"), ("b.sc", "bachelors"),
+    ("b.a.", "bachelors"), ("degree", "bachelors"), ("university", "bachelors"),
+    ("egyetem", "bachelors"), ("undergraduate", "bachelors"), ("college", "bachelors"),
+    ("associate", "associate"), ("vocational", "associate"), ("szakképz", "associate"),
+    ("technician", "associate"),
+    ("high school", "high_school"), ("secondary", "high_school"), ("érettségi", "high_school"),
+    ("erettsegi", "high_school"), ("abitur", "high_school"), ("gymnasium", "high_school"),
+    ("none", "none_required"), ("not required", "none_required"), ("no formal", "none_required"),
+    ("no degree", "none_required"), ("keine", "none_required"),
+]:
+    _EDUCATION_ALIASES[_pat] = _val
+
+
+def _normalize_education(raw) -> str | None:
+    """Map free-text or enum education value to one of the canonical levels, or None."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s:
+        return None
+    low = s.lower()
+    if low in ('null', 'none'):
+        return None
+    if low in _EDUCATION_VALID:
+        return low
+    for pattern, canonical in _EDUCATION_ALIASES.items():
+        if pattern in low:
+            return canonical
+    return None
+
+
 def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
     """Merge LLM-extracted fields with parser fallback. One place for all merge rules. String 'null'/'none' -> None for DB."""
     def n(v):
@@ -100,7 +140,7 @@ def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
         'seniority_level': n(extracted.get('seniority_level')) or n(parsed.get('seniority_level')),
         'experience_years_min': n(extracted.get('experience_years_min')),
         'experience_years_max': n(extracted.get('experience_years_max')),
-        'education_required': n(extracted.get('education_required')),
+        'education_required': _normalize_education(n(extracted.get('education_required'))),
         'raw_benefits': extracted.get('benefits'),
         'tech_list': tech_list,
         'skill_list': skill_list,
@@ -245,7 +285,7 @@ class JobTransformer:
             seniority_level=merged['seniority_level'],
             experience_years_min=merged['experience_years_min'],
             experience_years_max=merged['experience_years_max'],
-            education_required=(merged['education_required'][:50] if merged['education_required'] else None),
+            education_required=merged['education_required'],
             benefits=benefits_for_job,
             posted_at=parsed['posted_at'],
             content_hash=content_hash

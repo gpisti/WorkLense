@@ -330,19 +330,63 @@ ORDER BY job_count DESC;
 """
 
 EDUCATION_SALARY_SQL = """
+WITH edu_norm AS (
+    SELECT
+        j.id,
+        j.salary_min,
+        j.salary_max,
+        j.company_id,
+        CASE
+            WHEN j.education_required IN ('phd','masters','bachelors','associate','high_school','none_required')
+                THEN j.education_required
+            WHEN LOWER(j.education_required) LIKE '%%phd%%'
+                OR LOWER(j.education_required) LIKE '%%ph.d%%'
+                OR LOWER(j.education_required) LIKE '%%doktor%%'
+                OR LOWER(j.education_required) LIKE '%%doctorate%%'
+                THEN 'phd'
+            WHEN LOWER(j.education_required) LIKE '%%master%%'
+                OR LOWER(j.education_required) LIKE '%%msc%%'
+                OR LOWER(j.education_required) LIKE '%%m.sc%%'
+                OR LOWER(j.education_required) LIKE '%%mba%%'
+                OR LOWER(j.education_required) LIKE '%%postgrad%%'
+                THEN 'masters'
+            WHEN LOWER(j.education_required) LIKE '%%bachelor%%'
+                OR LOWER(j.education_required) LIKE '%%bsc%%'
+                OR LOWER(j.education_required) LIKE '%%b.sc%%'
+                OR LOWER(j.education_required) LIKE '%%degree%%'
+                OR LOWER(j.education_required) LIKE '%%university%%'
+                OR LOWER(j.education_required) LIKE '%%college%%'
+                OR LOWER(j.education_required) LIKE '%%undergrad%%'
+                THEN 'bachelors'
+            WHEN LOWER(j.education_required) LIKE '%%associate%%'
+                OR LOWER(j.education_required) LIKE '%%vocational%%'
+                THEN 'associate'
+            WHEN LOWER(j.education_required) LIKE '%%high school%%'
+                OR LOWER(j.education_required) LIKE '%%secondary%%'
+                OR LOWER(j.education_required) LIKE '%%abitur%%'
+                THEN 'high_school'
+            WHEN LOWER(j.education_required) LIKE '%%not required%%'
+                OR LOWER(j.education_required) LIKE '%%no formal%%'
+                OR LOWER(j.education_required) LIKE '%%no degree%%'
+                OR LOWER(j.education_required) LIKE '%%none%%'
+                THEN 'none_required'
+            ELSE 'other'
+        END AS education_level
+    FROM jobs j
+    WHERE j.salary_min IS NOT NULL AND j.salary_max IS NOT NULL
+      AND j.education_required IS NOT NULL
+)
 SELECT
-    j.education_required,
+    e.education_level AS education_required,
     COALESCE(c.industry, 'Unknown') AS industry,
-    COUNT(*)::int                                                            AS job_count,
-    ROUND(AVG((j.salary_min + j.salary_max) / 2.0), 0)::numeric              AS avg_salary,
-    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (j.salary_min + j.salary_max) / 2.0)::numeric, 0) AS median_salary,
-    ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY (j.salary_min + j.salary_max) / 2.0)::numeric, 0) AS p75_salary,
-    ROUND(MAX((j.salary_min + j.salary_max) / 2.0), 0)::numeric             AS max_salary
-FROM jobs j
-JOIN companies c ON j.company_id = c.id
-WHERE j.salary_min IS NOT NULL AND j.salary_max IS NOT NULL
-  AND j.education_required IS NOT NULL
-GROUP BY j.education_required, COALESCE(c.industry, 'Unknown')
+    COUNT(*)::int AS job_count,
+    ROUND(AVG((e.salary_min + e.salary_max) / 2.0), 0)::numeric AS avg_salary,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (e.salary_min + e.salary_max) / 2.0)::numeric, 0) AS median_salary,
+    ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY (e.salary_min + e.salary_max) / 2.0)::numeric, 0) AS p75_salary,
+    ROUND(MAX((e.salary_min + e.salary_max) / 2.0), 0)::numeric AS max_salary
+FROM edu_norm e
+JOIN companies c ON e.company_id = c.id
+GROUP BY e.education_level, COALESCE(c.industry, 'Unknown')
 ORDER BY median_salary DESC;
 """
 
