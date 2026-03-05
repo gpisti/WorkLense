@@ -19,7 +19,7 @@ class CompanyNormalizer:
         self.llm_url = f"{base_url}/api/generate"
         self.llm_model = settings.OLLAMA_MODEL
         self.embedding_model_name = settings.EMBEDDING_MODEL
-        self._llm_disabled_reason = None
+        self._llm_disabled = False
     
     def normalize(self, name: str) -> str:
         if not name:
@@ -54,7 +54,7 @@ class CompanyNormalizer:
                 return company_id
 
         # 2. Substring match -> LLM verification
-        if self.use_llm and not self._llm_disabled_reason:
+        if self.use_llm and not self._llm_disabled:
             for company_id, orig_name, norm_name in existing_companies:
                 if min(len(normalized), len(norm_name)) < 3:
                     continue
@@ -121,7 +121,7 @@ class CompanyNormalizer:
     def _llm_verify(self, new_name: str, existing_name: str) -> bool:
         if not self.use_llm:
             return False
-        if self._llm_disabled_reason:
+        if self._llm_disabled:
             return False
         try:
             prompt = f'Are these the same company? "{new_name}" and "{existing_name}". Reply with exactly one word: YES or NO.'
@@ -135,6 +135,6 @@ class CompanyNormalizer:
             result = response.json().get("response", "").upper()
             return "YES" in result and "NO" not in result
         except Exception as e:
-            self._llm_disabled_reason = str(e)
+            self._llm_disabled = True
             self.logger.warning(f"LLM verification disabled (Ollama not available): {e}")
             return False

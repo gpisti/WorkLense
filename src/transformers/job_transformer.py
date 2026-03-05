@@ -54,22 +54,20 @@ def _normalize_benefits(raw) -> list | None:
 
 _EDUCATION_VALID = {"phd", "masters", "bachelors", "associate", "high_school", "none_required"}
 
-_EDUCATION_ALIASES: dict[str, str] = {}
-for _pat, _val in [
-    ("phd", "phd"), ("ph.d", "phd"), ("doktor", "phd"), ("doctorate", "phd"),
-    ("master", "masters"), ("msc", "masters"), ("m.sc", "masters"), ("mba", "masters"),
-    ("diplom", "masters"), ("postgrad", "masters"),
-    ("bachelor", "bachelors"), ("bsc", "bachelors"), ("b.sc", "bachelors"),
-    ("b.a.", "bachelors"), ("degree", "bachelors"), ("university", "bachelors"),
-    ("egyetem", "bachelors"), ("undergraduate", "bachelors"), ("college", "bachelors"),
-    ("associate", "associate"), ("vocational", "associate"), ("szakképz", "associate"),
-    ("technician", "associate"),
-    ("high school", "high_school"), ("secondary", "high_school"), ("érettségi", "high_school"),
-    ("erettsegi", "high_school"), ("abitur", "high_school"), ("gymnasium", "high_school"),
-    ("none", "none_required"), ("not required", "none_required"), ("no formal", "none_required"),
-    ("no degree", "none_required"), ("keine", "none_required"),
-]:
-    _EDUCATION_ALIASES[_pat] = _val
+_EDUCATION_ALIASES = {
+    "phd": "phd", "ph.d": "phd", "doktor": "phd", "doctorate": "phd",
+    "master": "masters", "msc": "masters", "m.sc": "masters", "mba": "masters",
+    "diplom": "masters", "postgrad": "masters",
+    "bachelor": "bachelors", "bsc": "bachelors", "b.sc": "bachelors",
+    "b.a.": "bachelors", "degree": "bachelors", "university": "bachelors",
+    "egyetem": "bachelors", "undergraduate": "bachelors", "college": "bachelors",
+    "associate": "associate", "vocational": "associate", "szakképz": "associate",
+    "technician": "associate",
+    "high school": "high_school", "secondary": "high_school", "érettségi": "high_school",
+    "erettsegi": "high_school", "abitur": "high_school", "gymnasium": "high_school",
+    "none": "none_required", "not required": "none_required", "no formal": "none_required",
+    "no degree": "none_required", "keine": "none_required",
+}
 
 
 def _normalize_education(raw) -> str | None:
@@ -92,8 +90,7 @@ def _normalize_education(raw) -> str | None:
 
 
 def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
-    def n(v):
-        return _to_db_null(v)
+    n = _to_db_null
 
     if not extracted:
         cc = n(parsed.get('country'))
@@ -102,8 +99,8 @@ def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
             'city': n(parsed.get('city')),
             'country_code': cc,
             'country_name': n(parsed.get('country_name')) or (cc.upper() if cc else None),
-            'is_remote': False if n(parsed.get('is_remote')) is None else bool(parsed.get('is_remote')),
-            'is_hybrid': False if n(parsed.get('is_hybrid')) is None else bool(parsed.get('is_hybrid')),
+            'is_remote': bool(parsed.get('is_remote')),
+            'is_hybrid': bool(parsed.get('is_hybrid')),
             'salary_min': n(parsed.get('salary_min')),
             'salary_max': n(parsed.get('salary_max')),
             'salary_currency': n(parsed.get('salary_currency')),
@@ -122,13 +119,17 @@ def _merge_extracted_parsed(extracted: dict | None, parsed: dict) -> dict:
     raw_skill = extracted.get('skills') or []
     tech_list = [{k: n(v) for k, v in t.items()} for t in raw_tech if isinstance(t, dict)]
     skill_list = [{k: n(v) for k, v in s.items()} for s in raw_skill if isinstance(s, dict)]
+
+    raw_remote = extracted.get('is_remote') if extracted.get('is_remote') is not None else parsed.get('is_remote', False)
+    raw_hybrid = extracted.get('is_hybrid') if extracted.get('is_hybrid') is not None else parsed.get('is_hybrid', False)
+
     return {
         'company_name': n(extracted.get('company_name')) or n(parsed.get('company_name')),
         'city': n(extracted.get('city')) if extracted.get('city') is not None else n(parsed.get('city')),
         'country_code': cc,
         'country_name': n(extracted.get('country_name')) or n(parsed.get('country_name')) or (cc.upper() if cc else None),
-        'is_remote': (lambda v: False if n(v) is None else bool(v))(extracted.get('is_remote') if extracted.get('is_remote') is not None else parsed.get('is_remote', False)),
-        'is_hybrid': (lambda v: False if n(v) is None else bool(v))(extracted.get('is_hybrid') if extracted.get('is_hybrid') is not None else parsed.get('is_hybrid', False)),
+        'is_remote': bool(raw_remote),
+        'is_hybrid': bool(raw_hybrid),
         'salary_min': n(extracted['salary_min']) if 'salary_min' in extracted else n(parsed.get('salary_min')),
         'salary_max': n(extracted['salary_max']) if 'salary_max' in extracted else n(parsed.get('salary_max')),
         'salary_currency': n(extracted.get('salary_currency')) or n(parsed.get('salary_currency')),
@@ -211,12 +212,10 @@ class JobTransformer:
         benefits_for_job = _normalize_benefits(merged['raw_benefits'])
 
         country_code = merged['country_code']
-        if country_code is not None and isinstance(country_code, str):
-            s = country_code.strip().lower()
-            if s in ('null', 'none', '') or len(s) != 2:
+        if isinstance(country_code, str):
+            country_code = country_code.strip().lower()
+            if len(country_code) != 2:
                 country_code = None
-            else:
-                country_code = s[:2]
 
         company_id = None
         if merged['company_name']:

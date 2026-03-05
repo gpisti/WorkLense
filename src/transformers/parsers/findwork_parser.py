@@ -98,7 +98,7 @@ class FindworkParser:
 
         parts = [p.strip() for p in re.split(r'[,/|]', location) if p.strip()]
         noise = {'or', 'and', 'remote', 'hybrid', 'onsite', 'on-site', 'in'}
-        cleaned = [p for p in parts if p.lower() not in noise and not FindworkParser._REMOTE_PATTERN.fullmatch(p)]
+        cleaned = [p for p in parts if p.lower() not in noise]
 
         country_code, country_name = None, None
         loc_lower = location.lower()

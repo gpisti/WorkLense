@@ -53,17 +53,6 @@ def _section(title: str, description: str):
     )
 
 
-def _tech_slope(df: pd.DataFrame) -> pd.Series:
-    slopes = {}
-    for tech, grp in df.groupby("technology"):
-        grp = grp.sort_values("month")
-        if len(grp) < 2:
-            slopes[tech] = 0
-            continue
-        slopes[tech] = (grp["job_count"].iloc[-1] - grp["job_count"].iloc[0]) / max(1, len(grp) - 1)
-    return pd.Series(slopes)
-
-
 # ---------------------------------------------------------------------------
 # SQL constants
 # ---------------------------------------------------------------------------
@@ -654,7 +643,14 @@ try:
         tech_totals = df_trend.groupby("technology")["job_count"].sum()
         top_techs = tech_totals.nlargest(top_n_tech).index.tolist()
         df_plot = df_trend[df_trend["technology"].isin(top_techs)]
-        slopes = _tech_slope(df_plot)
+        slopes = {}
+        for tech, grp in df_plot.groupby("technology"):
+            grp = grp.sort_values("month")
+            if len(grp) < 2:
+                slopes[tech] = 0
+                continue
+            slopes[tech] = (grp["job_count"].iloc[-1] - grp["job_count"].iloc[0]) / max(1, len(grp) - 1)
+        slopes = pd.Series(slopes)
         highlight_techs = set(slopes.sort_values(ascending=False).head(top_slope_n).index) if top_slope_n else set()
 
         fig = _fig(height=520)
@@ -668,7 +664,7 @@ try:
                 marker=dict(size=5) if hl else None,
                 opacity=1.0 if hl else 0.35,
             ))
-        _apply(fig, xaxis_title="Honap", yaxis_title="Job count",
+        fig.update_layout(xaxis_title="Honap", yaxis_title="Job count",
                margin=dict(l=60, r=30, t=20, b=50),
                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02, font=dict(size=10)))
         st.plotly_chart(fig, use_container_width=True)
@@ -736,7 +732,7 @@ try:
             hovertext=[f"<b>{n}</b><br>{jobs_per_skill[n]} jobs" for n in skill_names],
             hoverinfo="text", showlegend=False,
         ))
-        _apply(fig,
+        fig.update_layout(
                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                margin=dict(l=20, r=20, t=20, b=20))
@@ -858,7 +854,7 @@ try:
                 fig_bar = _fig(height=380)
                 fig_bar.add_trace(go.Bar(name="Remote", x=industry_agg["industry"], y=industry_agg["avg_remote_salary"], marker_color="#34d399"))
                 fig_bar.add_trace(go.Bar(name="On-site", x=industry_agg["industry"], y=industry_agg["avg_onsite_salary"], marker_color="#6366f1"))
-                _apply(fig_bar, barmode="group",
+                fig_bar.update_layout(barmode="group",
                        xaxis=dict(type="category", tickangle=-45, tickfont=dict(size=10)),
                        yaxis_title="Salary", margin=dict(l=60, r=30, t=20, b=140))
                 st.plotly_chart(fig_bar, use_container_width=True)
@@ -955,7 +951,7 @@ try:
                           + " | Total 6m: " + sub["total_postings_6m"].fillna(0).astype(int).astype(str)),
                     hoverinfo="text",
                 ))
-            _apply(fig, xaxis_title="Atl. elettartam (nap)", yaxis_title="Hirdetes / ho",
+            fig.update_layout(xaxis_title="Atl. elettartam (nap)", yaxis_title="Hirdetes / ho",
                    margin=dict(l=60, r=30, t=20, b=50))
             st.plotly_chart(fig, use_container_width=True)
             with st.expander("Nyers adat"):
@@ -1003,7 +999,7 @@ try:
                 marker_color=color_sen.get(sen, "#888"), customdata=salaries,
                 hovertemplate="%{y}<br>%{x:.1f}%%<br>Avg salary: %{customdata}<extra></extra>",
             ))
-        _apply(fig, barmode="stack",
+        fig.update_layout(barmode="stack",
                xaxis=dict(title="%%", range=[0, 100]),
                margin=dict(l=180, r=30, t=20, b=50))
         st.plotly_chart(fig, use_container_width=True)
@@ -1057,7 +1053,7 @@ try:
                         r=r, theta=categories_all, name=company, fill="toself",
                         line=dict(color=PALETTE[i % len(PALETTE)]),
                     ))
-                _apply(fig, polar=dict(
+                fig.update_layout(polar=dict(
                     bgcolor="rgba(0,0,0,0)",
                     radialaxis=dict(visible=True, range=[0, 100], gridcolor="#334155", tickfont=dict(color="#64748b")),
                     angularaxis=dict(gridcolor="#334155", tickfont=dict(color="#94a3b8")),
@@ -1071,7 +1067,7 @@ try:
                         row = df_sel[(df_sel["company"] == comp) & (df_sel["tech_category"] == cat)]
                         pcts.append(float(row["pct_of_company_jobs"].iloc[0]) if not row.empty else 0)
                     fig.add_trace(go.Bar(name=cat, x=selected, y=pcts, marker_color=PALETTE[i % len(PALETTE)]))
-                _apply(fig, barmode="stack", yaxis_title="%%", xaxis_tickangle=-45,
+                fig.update_layout(barmode="stack", yaxis_title="%%", xaxis_tickangle=-45,
                        margin=dict(l=60, r=30, t=20, b=140))
                 st.plotly_chart(fig, use_container_width=True)
             with st.expander("Nyers adat"):
@@ -1123,7 +1119,7 @@ try:
                 line=dict(width=14, color=color), customdata=[cd, cd],
                 hovertemplate="%{customdata[2]:,.0f} – %{customdata[3]:,.0f}<br>Range ratio: %{customdata[0]:.3f}<br>Jobs: %{customdata[1]}<extra></extra>",
             ))
-        _apply(fig,
+        fig.update_layout(
                yaxis=dict(tickvals=list(range(n)), ticktext=labels, tickfont=dict(size=10)),
                xaxis_title="Fizetes", showlegend=False, hovermode="closest",
                margin=dict(l=220, r=60, t=20, b=50))
@@ -1189,7 +1185,7 @@ try:
                                     line=dict(width=0.5, color="#1e293b"), opacity=0.85),
                         hoverinfo="text",
                     ))
-                _apply(fig, geo=_DARK_GEO, margin=dict(l=0, r=0, t=20, b=0))
+                fig.update_layout(geo=_DARK_GEO, margin=dict(l=0, r=0, t=20, b=0))
                 st.plotly_chart(fig, use_container_width=True)
                 with st.expander("Nyers adat"):
                     st.dataframe(df_city.head(200), use_container_width=True)
@@ -1224,7 +1220,7 @@ try:
             fig.add_trace(go.Bar(name=ind, x=sub["education_required"], y=sub["median_salary"], marker_color=PALETTE[i % len(PALETTE)]))
         fig.add_hline(y=overall_median, line_dash="dash", line_color="#94a3b8",
                       annotation_text="Median", annotation_font_color="#94a3b8")
-        _apply(fig, barmode="group", xaxis_title="Vegzettseg", yaxis_title="Median salary",
+        fig.update_layout(barmode="group", xaxis_title="Vegzettseg", yaxis_title="Median salary",
                xaxis_tickangle=-45, margin=dict(l=60, r=30, t=20, b=140))
         st.plotly_chart(fig, use_container_width=True)
         with st.expander("Nyers adat"):
@@ -1268,7 +1264,7 @@ try:
 
         fig = _fig(height=220)
         fig.add_trace(go.Bar(x=df_uni["unicorn_rank"], y=df_uni["avg_pair_frequency"], marker_color="#6366f1"))
-        _apply(fig, xaxis_title="Unicorn rank", yaxis_title="Avg pair freq.", showlegend=False,
+        fig.update_layout(xaxis_title="Unicorn rank", yaxis_title="Avg pair freq.", showlegend=False,
                margin=dict(l=60, r=30, t=20, b=50))
         st.plotly_chart(fig, use_container_width=True)
 except Exception as e:
@@ -1305,7 +1301,7 @@ try:
             text=df_sq["avg_processing_min"].fillna(0).apply(lambda x: f"{x:.1f}"),
             textposition="outside", textfont=dict(size=11),
         ))
-        _apply(fig, showlegend=False, xaxis_title="Source", yaxis_title="Perc",
+        fig.update_layout(showlegend=False, xaxis_title="Source", yaxis_title="Perc",
                margin=dict(l=60, r=30, t=20, b=50))
         st.plotly_chart(fig, use_container_width=True)
 except Exception as e:
@@ -1367,7 +1363,7 @@ try:
                         name=row["zombie_type"], legendgroup=row["zombie_type"],
                         showlegend=(i == 0 or row["zombie_type"] != sub.iloc[max(0, i - 1)].get("zombie_type")),
                     ))
-                _apply(fig_g,
+                fig_g.update_layout(
                        xaxis=dict(type="date"),
                        yaxis=dict(tickvals=list(range(len(sub))), ticktext=sub["title"].astype(str).str[:40].tolist(), tickfont=dict(size=9)),
                        margin=dict(l=220, r=30, t=20, b=50))
@@ -1382,6 +1378,6 @@ except Exception as e:
 st.markdown(
     '<hr class="section-divider">'
     '<p style="text-align:center;color:#475569;font-size:0.8rem;padding:1rem 0">'
-    'WorkLense – IT allaspiaci analytics</p>',
+    'WorkLense - IT allaspiaci analytics</p>',
     unsafe_allow_html=True,
 )
