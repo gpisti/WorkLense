@@ -1,0 +1,11 @@
+# ETL pipeline deps for Airflow container.
+# Packages already bundled with Airflow (sqlalchemy, requests, pandas, numpy,
+# python-dateutil) are intentionally omitted to avoid version conflicts.
+python-dotenv==1.0.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+psycopg2-binary==2.9.9
+loguru==0.7.2
+tenacity==8.2.3
+rapidfuzz>=3.0.0
+sentence-transformers>=2.2.0

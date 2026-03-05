@@ -17,15 +17,18 @@ def setup_logger():
         level=settings.LOG_LEVEL
     )
     
-    os.makedirs("logs", exist_ok=True)
-    
-    _logger.add(
-        "logs/errors.log",
-        rotation="500 MB",
-        retention="10 days",
-        level="ERROR",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
-    )
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "logs")
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        _logger.add(
+            os.path.join(log_dir, "errors.log"),
+            rotation="500 MB",
+            retention="10 days",
+            level="ERROR",
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+        )
+    except PermissionError:
+        pass
     
     return _logger
 
