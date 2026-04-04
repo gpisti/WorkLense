@@ -114,3 +114,6 @@ class FindworkParser:
                 city = candidate
 
         return city, country_code, country_name
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

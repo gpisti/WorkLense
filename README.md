@@ -304,3 +304,7 @@ processes all unprocessed `raw_jobs` rows through the full NLP pipeline.
 ## License
 
 Private project.
+
+---
+
+**Gál István – szakdolgozat.** A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

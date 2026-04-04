@@ -28,3 +28,6 @@ class Settings:
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 settings = Settings()
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

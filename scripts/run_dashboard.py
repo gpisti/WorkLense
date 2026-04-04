@@ -16,3 +16,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

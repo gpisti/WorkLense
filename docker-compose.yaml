@@ -133,3 +133,6 @@ volumes:
 networks:
   worklense-network:
     driver: bridge
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

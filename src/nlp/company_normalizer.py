@@ -138,3 +138,6 @@ class CompanyNormalizer:
             self._llm_disabled = True
             self.logger.warning(f"LLM verification disabled (Ollama not available): {e}")
             return False
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

@@ -54,3 +54,6 @@ with DAG(
     )
 
     [scrape_arbeitnow, scrape_adzuna, scrape_findwork] >> transform_jobs
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

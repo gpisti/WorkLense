@@ -281,3 +281,6 @@ LEFT JOIN jobs j ON jt.job_id = j.id
 WHERE j.is_active = TRUE
 GROUP BY t.id, t.name, t.category
 ORDER BY job_count DESC;
+
+-- -----------------------------------------------------------------------------
+-- Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

@@ -188,3 +188,6 @@ class JobSkill(Base):
     
     job = relationship("Job", back_populates="skills")
     skill = relationship("Skill", back_populates="jobs")
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

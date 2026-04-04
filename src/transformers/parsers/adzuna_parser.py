@@ -33,3 +33,6 @@ class AdzunaParser:
             'seniority_level': None,
             'posted_at': parse_date(data.get('created'))
         }
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

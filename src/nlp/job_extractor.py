@@ -101,3 +101,6 @@ def extract_job_structured(title: str, description: str) -> dict | None:
     elapsed = time.monotonic() - t0
     logger.debug(f"Job extraction: failed after {_MAX_RETRIES} attempts ({elapsed:.1f}s)")
     return None
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

@@ -320,3 +320,6 @@ class JobTransformer:
 if __name__ == "__main__":
     transformer = JobTransformer()
     transformer.run()
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

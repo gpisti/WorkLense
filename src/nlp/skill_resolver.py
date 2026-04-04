@@ -65,3 +65,6 @@ def resolve_skill_pairs_to_ids(session: Session, pairs: list[tuple[str, str]]) -
         finally:
             new_session.close()
     return ids
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

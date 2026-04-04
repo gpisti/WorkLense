@@ -1381,3 +1381,6 @@ st.markdown(
     'WorkLense - IT allaspiaci analytics</p>',
     unsafe_allow_html=True,
 )
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

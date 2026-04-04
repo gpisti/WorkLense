@@ -34,3 +34,6 @@ def setup_logger():
 
 
 logger = setup_logger()
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

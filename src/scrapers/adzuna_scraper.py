@@ -154,3 +154,6 @@ class AdzunaScraper:
 if __name__ == "__main__":
     scraper = AdzunaScraper()
     scraper.run()
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

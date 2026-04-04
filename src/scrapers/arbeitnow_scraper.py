@@ -73,3 +73,6 @@ class ArbeitnowScraper:
 if __name__ == "__main__":
     scraper = ArbeitnowScraper()
     scraper.run()
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

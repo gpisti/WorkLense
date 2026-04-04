@@ -59,3 +59,6 @@ class ArbeitnowParser:
             'seniority_level': seniority,
             'posted_at': posted_at
         }
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

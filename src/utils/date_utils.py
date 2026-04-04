@@ -13,3 +13,6 @@ def parse_date(date_str) -> datetime:
         return dt
     except Exception:
         return datetime.now(timezone.utc)
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.

@@ -9,3 +9,6 @@ loguru==0.7.2
 tenacity==8.2.3
 rapidfuzz>=3.0.0
 sentence-transformers>=2.2.0
+
+# -----------------------------------------------------------------------------
+# Gál István – szakdolgozat. A megvalósítás során mesterséges intelligencia (AI) eszközöket használtam.
